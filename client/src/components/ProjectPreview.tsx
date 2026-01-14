@@ -4,58 +4,6 @@ import { iframeScript } from '../assets/assets';
 import EditorPanel from './EditorPanel';
 import LoaderSteps from './LoaderSteps';
 
-// Utility function to fix common issues in AI-generated HTML
-export const fixGeneratedHtml = (html: string): string => {
-    if (!html) return '';
-
-    let processedHtml = html;
-
-    // Fix common issues in AI-generated HTML
-    // 1. Replace problematic Tailwind CDN with working one
-    processedHtml = processedHtml.replace(
-        /https:\/\/cdn\.jsdelivr\.net\/npm\/@tailwindcss\/browser@\d+\/?/g,
-        'https://cdn.tailwindcss.com'
-    );
-
-    // 2. Fix link tags that should be script tags for Tailwind
-    processedHtml = processedHtml.replace(
-        /<link[^>]*href=["']https:\/\/cdn\.tailwindcss\.com["'][^>]*>/g,
-        '<script src="https://cdn.tailwindcss.com"></script>'
-    );
-
-    // 3. Remove @tailwind directives that cause issues
-    processedHtml = processedHtml.replace(/@tailwind\s+[^;]+;/g, '');
-
-    // 4. Fix invalid CSS selectors
-    processedHtml = processedHtml.replace(/:contains\([^)]+\)/g, '[data-text*="Empowering you"]');
-
-    // 5. Ensure proper HTML structure
-    if (!processedHtml.includes('<html>')) {
-        processedHtml = '<html><head></head><body>' + processedHtml + '</body></html>';
-    }
-    if (!processedHtml.includes('<head>') && processedHtml.includes('<html>')) {
-        processedHtml = processedHtml.replace('<html>', '<html><head></head>');
-    }
-
-    // Ensure Tailwind CSS is properly loaded
-    if (!processedHtml.includes('cdn.tailwindcss.com') && !processedHtml.includes('@tailwindcss')) {
-        const tailwindScript = '<script src="https://cdn.tailwindcss.com"></script>';
-        if (processedHtml.includes('<head>')) {
-            processedHtml = processedHtml.replace('<head>', '<head>' + tailwindScript);
-        } else {
-            processedHtml = processedHtml.replace('<html>', '<html><head>' + tailwindScript + '</head>');
-        }
-    }
-
-    // Fix script tags that might have ES module issues
-    processedHtml = processedHtml.replace(
-        /<script[^>]*type=["']module["'][^>]*>[\s\S]*?<\/script>/g,
-        (match) => match.replace('type="module"', '').replace(/import\s+.*?\s+from\s+['"][^'"]+['"];?\s*/g, '')
-    );
-
-    return processedHtml;
-};
-
 
 interface ProjectPreviewProps{
     project: Project;
@@ -140,15 +88,11 @@ return()=> window.removeEventListener('message', handleMessage)
 
     const injectPreview =(html: string)=>{
         if(!html) return '';
-
-        let processedHtml = fixGeneratedHtml(html);
-
-        if(!showEditorPanel) return processedHtml;
-
-        if(processedHtml.includes('</body>'))
-            return processedHtml.replace('</body>', iframeScript + '</body>')
+        if(!showEditorPanel) return html
+        if(html.includes('</body>'))
+            return html.replace('</body>', iframeScript + '</body>')
         else{
-            return processedHtml + iframeScript
+            return html+ iframeScript
         }
     }
 

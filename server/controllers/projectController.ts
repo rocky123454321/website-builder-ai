@@ -49,7 +49,7 @@ export const makeRevision = async (req: Request, res: Response) => {
         })
 
   const promptEnhanceResponce = await openai.chat.completions.create({
-    model: 'kwaipilot/kat-coder-pro:free',
+    model: 'mistralai/mistral-7b-instruct:free',
     messages:[
         {
             role: 'system',
@@ -63,6 +63,7 @@ You are a prompt enhancement specialist. The user wants to make changes to their
     4. Using clear technical terms
 
 Return ONLY the enhanced request, nothing else. Keep it concise (1-2 sentences).
+
 `
         },
         {
@@ -90,12 +91,11 @@ Return ONLY the enhanced request, nothing else. Keep it concise (1-2 sentences).
     })
 
         const codeGenerationResponse = await openai.chat.completions.create({
-        model: 'kwaipilot/kat-coder-pro:free',
+        model: 'mistralai/mistral-7b-instruct:free',
         messages: [
             {
                 role: 'system',
-                content: `
-You are an expert web developer.
+                content: `You are an expert web developer. 
 
     CRITICAL REQUIREMENTS:
     - Return ONLY the complete updated HTML code with the requested changes.
@@ -103,17 +103,10 @@ You are an expert web developer.
     - Use Tailwind utility classes for all styling changes.
     - Include all JavaScript in <script> tags before closing </body>
     - Make sure it's a complete, standalone HTML document with Tailwind CSS
-
-    JAVASCRIPT REQUIREMENTS:
-    - Use VALID CSS selectors (never use querySelector('#') or querySelector('.') alone)
-    - Do NOT use postMessage() with DOM objects like SVGAnimatedString or elements
-    - Use simple data types for any communication between frames/windows
-    - Avoid complex object serialization that can fail
-    - Use proper event listeners and DOM manipulation safely
-
     - Return the HTML Code Only, nothing else
 
-    Apply the requested changes while maintaining the Tailwind CSS styling approach.`
+    Apply the requested changes while maintaining the Tailwind CSS styling approach.
+`
             },
             {
                 role: 'user',
@@ -124,41 +117,7 @@ You are an expert web developer.
     })
      const code = codeGenerationResponse.choices[0].message.content || '';
 
-    // Clean up the generated code
-    const cleanCode = (html: string): string => {
-        if (!html) return '';
-
-        // Remove markdown code fences
-        let cleaned = html.replace(/```[a-z]*n?/gi,'')
-            .replace(/```$/g,'')
-            .trim();
-
-        // Fix invalid CSS selectors (like querySelector('#') or querySelector('.'))
-        cleaned = cleaned.replace(/querySelector\(['"`]#[^'"]*['"`]\)/g, 'querySelector(null)');
-        cleaned = cleaned.replace(/querySelector\(['"`]\.[^'"]*['"`]\)/g, 'querySelector(null)');
-        cleaned = cleaned.replace(/querySelector\(['"`]#[^'"]*#[^'"]*['"`]\)/g, 'querySelector(null)');
-        // Fix empty or invalid selectors
-        cleaned = cleaned.replace(/querySelector\(['"`]['"`]\)/g, 'querySelector(null)');
-        cleaned = cleaned.replace(/querySelector\([^)]*\)/g, (match) => {
-            const selector = match.match(/querySelector\(['"`]([^'"]*)['"`]\)/)?.[1];
-            if (selector && (selector === '#' || selector === '.' || selector.startsWith('# ') || selector.startsWith('. '))) {
-                return 'querySelector(null)';
-            }
-            return match;
-        });
-
-        // Remove or fix problematic postMessage calls with complex objects
-        cleaned = cleaned.replace(/postMessage\([^)]*\bSVGAnimatedString\b[^)]*\)/g, '// Removed problematic postMessage with SVGAnimatedString');
-        cleaned = cleaned.replace(/postMessage\([^)]*\bSVGElement\b[^)]*\)/g, '// Removed problematic postMessage with SVGElement');
-        cleaned = cleaned.replace(/postMessage\([^)]*\belement\b[^)]*\)/g, '// Removed problematic postMessage with DOM element');
-
-        // Remove empty script tags that might have been left after cleanup
-        cleaned = cleaned.replace(/<script[^>]*>\s*<\/script>/gi, '');
-
-        return cleaned;
-    };
-
-    const cleanedCode = cleanCode(code);
+    const cleanedCode = code;
 
     const version = await prisma.version.create({
         data: {
