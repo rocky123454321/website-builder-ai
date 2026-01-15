@@ -1,8 +1,11 @@
 import axios from 'axios'
 
-//goods
+// Use Vite proxy in development, direct URL in production
+const baseURL = import.meta.env.PROD ? (import.meta.env.VITE_BASEURL || 'http://localhost:3000') : ''
+console.log('Axios baseURL:', baseURL || 'using Vite proxy')
+
 const api = axios.create({
-    baseURL: import.meta.env.VITE_BASEURL || 'http://localhost:3000',
+    baseURL,
    withCredentials: true
 })
 

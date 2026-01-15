@@ -5,7 +5,7 @@ import { useNavigate, NavLink } from "react-router-dom"
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate()
-//goods
+//check
 
   return (
       <AuthUIProvider

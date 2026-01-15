@@ -7,7 +7,7 @@ import ProjectPreview, { type ProjectPreviewRef } from '../components/ProjectPre
 import api from '@/configs/axios';
 import { toast } from 'sonner';
 import { authClient } from '@/lib/auth-client';
-
+import logo from '../assets/favicon.svg'
 
 const ProjectPage = () => {
   const { projectId } = useParams();
@@ -112,7 +112,7 @@ const ProjectPage = () => {
       <div className='flex items-center gap-4 px-4 py-2 no-scrollbar overflow-x-auto'>
         {/* leftside */}
         <div className='flex items-center gap-4 flex-1 min-w-0'>
-          <img src="/favicon.svg" alt="logo" className='h-6 cursor-pointer shrink-0'
+         <img src={logo} alt="logo" className='h-6 cursor-pointer shrink-0' 
             onClick={() => navigate('/')} />
           <div className='max-w-64 sm:max-w-xs min-w-0'>
             <p className='text-sm font-medium capitalize truncate'>{project.name}</p>

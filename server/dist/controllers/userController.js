@@ -2,19 +2,34 @@ import prisma from '../lib/prisma.js';
 import openai from '../configs/openai.js';
 //gods
 export const getUserCredits = async (req, res) => {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/bb5bd66d-f839-4986-b085-0c0297026f66', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'server/controllers/userController.ts:5', message: 'getUserCredits entry', data: { userId: req.userId }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'initial', hypothesisId: 'A,B,C' }) }).catch(() => { });
+    // #endregion
     try {
         const userId = req.userId;
         if (!userId) {
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/bb5bd66d-f839-4986-b085-0c0297026f66', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'server/controllers/userController.ts:10', message: 'no userId in request', data: {}, timestamp: Date.now(), sessionId: 'debug-session', runId: 'initial', hypothesisId: 'A' }) }).catch(() => { });
+            // #endregion
             return res.status(401).json({ message: 'Unauthorized' });
         }
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/bb5bd66d-f839-4986-b085-0c0297026f66', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'server/controllers/userController.ts:15', message: 'before user lookup', data: { userId }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'initial', hypothesisId: 'D' }) }).catch(() => { });
+        // #endregion
         const user = await prisma.user.findUnique({
             where: { id: userId }
         });
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/bb5bd66d-f839-4986-b085-0c0297026f66', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'server/controllers/userController.ts:18', message: 'after user lookup', data: { userFound: !!user, credits: user?.credits }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'initial', hypothesisId: 'D' }) }).catch(() => { });
+        // #endregion
         /*
                 if (!user) {
                     return res.status(404).json({ message: 'User not found' })
                 }
         */
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/bb5bd66d-f839-4986-b085-0c0297026f66', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'server/controllers/userController.ts:25', message: 'returning credits', data: { credits: user?.credits }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'initial', hypothesisId: 'A,B,C,D' }) }).catch(() => { });
+        // #endregion
         res.json({ credits: user?.credits });
     }
     catch (error) {

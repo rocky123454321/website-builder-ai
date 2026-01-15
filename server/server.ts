@@ -2,7 +2,6 @@ import express, { Request, Response } from 'express';
 import 'dotenv/config'
 import cors from 'cors'
 import path from 'path';
-import cookieParser from 'cookie-parser';
 import { toNodeHandler } from 'better-auth/node';
 import { auth } from './lib/auth.js';
 import userRouter from './routes/userRoutes.js';
@@ -12,7 +11,7 @@ const app = express();
 const port = 3000;
 const corsOptions={
     origin: process.env.TRUSTED_ORIGINS?.split(',') || ['http://localhost:5173'],
-    credentials: true
+    credentials: true,
 }
 app.use(cors(corsOptions))
 const authHandler = toNodeHandler(auth);
