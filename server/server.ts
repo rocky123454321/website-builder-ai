@@ -7,7 +7,7 @@ import { auth } from './lib/auth.js';
 import userRouter from './routes/userRoutes.js';
 import projectRouter from './routes/projectRoutes.js';
 const app = express();
-//goods
+//check
 const port = 3000;
 const corsOptions={
     origin: process.env.TRUSTED_ORIGINS?.split(',') || ['http://localhost:5173'],
