@@ -2,7 +2,6 @@ import express, { Request, Response } from 'express';
 import 'dotenv/config'
 import cors from 'cors'
 import path from 'path';
-import serverless from 'serverless-http';
 import { toNodeHandler } from 'better-auth/node';
 import { auth } from './lib/auth.js';
 import userRouter from './routes/userRoutes.js';
@@ -48,5 +47,6 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
     }
 });
 
-// Export for Vercel serverless deployment
-export default serverless(app);
+app.listen(port, () => {
+    console.log(`Server is running at http://localhost:${port}`);
+});
