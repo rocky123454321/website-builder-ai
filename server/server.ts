@@ -9,28 +9,22 @@ import serverless from 'serverless-http';
 
 const app = express();
 
-// CORS setup
-const corsOptions = {
-  origin: process.env.TRUSTED_ORIGINS?.split(',') || ['http://localhost:5173'],
-  credentials: true,
-};
-app.use(cors(corsOptions));
+// CORS
+app.use(cors({
+  origin: process.env.TRUSTED_ORIGINS?.split(','),
+  credentials: true
+}));
 
 app.use(express.json({ limit: '50mb' }));
 
 // Better Auth
 const authHandler = toNodeHandler(auth);
-app.all('/api/auth/*any', async (req, res, next) => {
+app.all('/api/auth/*any', async (req, res) => {
   try {
     await authHandler(req, res);
   } catch (error: any) {
     console.error('Better-auth error:', error);
-    if (!res.headersSent) {
-      res.status(500).json({
-        message: error?.message || 'Authentication error',
-        error: process.env.NODE_ENV === 'development' ? error?.stack : undefined,
-      });
-    }
+    res.status(500).json({ message: error?.message });
   }
 });
 
@@ -44,10 +38,8 @@ app.use('/api/project', projectRouter);
 
 // Error handler
 app.use((err: any, req: Request, res: Response, next: Function) => {
-  if (!res.headersSent) {
-    res.status(500).json({ message: err?.message || 'Internal Server Error' });
-  }
+  if (!res.headersSent) res.status(500).json({ message: err?.message });
 });
 
-// Export for Vercel
+// Export serverless handler
 export const handler = serverless(app);
