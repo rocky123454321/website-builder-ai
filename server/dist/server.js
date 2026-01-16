@@ -10,7 +10,23 @@ const app = express();
 //check
 const port = 3000;
 const corsOptions = {
-    origin: process.env.TRUSTED_ORIGINS?.split(',') || ['http://localhost:5173'],
+    origin: (origin, callback) => {
+        // Allow requests with no origin (mobile apps, Postman, etc.)
+        if (!origin)
+            return callback(null, true);
+        // Allow localhost for development
+        if (origin.includes('localhost'))
+            return callback(null, true);
+        // Allow Vercel domains (*.vercel.app)
+        if (origin.endsWith('.vercel.app'))
+            return callback(null, true);
+        // Check against explicitly trusted origins
+        const trustedOrigins = process.env.TRUSTED_ORIGINS?.split(',') || [];
+        if (trustedOrigins.includes(origin))
+            return callback(null, true);
+        // Reject other origins
+        return callback(new Error('Not allowed by CORS'));
+    },
     credentials: true,
 };
 app.use(cors(corsOptions));
