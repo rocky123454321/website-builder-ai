@@ -36,7 +36,7 @@ const corsOptions = {
       return callback(null, true);
     }
 
-    // Reject the request
+    // Reject the requestz
     return callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
