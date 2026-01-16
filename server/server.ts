@@ -2,7 +2,6 @@ import express, { Request, Response } from 'express';
 import 'dotenv/config'
 import cors from 'cors'
 import path from 'path';
-import serverless from 'serverless-http';
 import { toNodeHandler } from 'better-auth/node';
 import { auth } from './lib/auth.js';
 import userRouter from './routes/userRoutes.js';
@@ -11,29 +10,26 @@ const app = express();
 //check
 const port = 3000;
 const corsOptions={
-    origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
-        // Allow requests with no origin (mobile apps, Postman, etc.)
-        if (!origin) return callback(null, true);
-
-        // Allow localhost for development
-        if (origin.includes('localhost')) return callback(null, true);
-
-        // Allow Vercel domains (*.vercel.app)
-        if (origin.endsWith('.vercel.app')) return callback(null, true);
-
-        // Check against explicitly trusted origins
-        const trustedOrigins = process.env.TRUSTED_ORIGINS?.split(',') || [];
-        if (trustedOrigins.includes(origin)) return callback(null, true);
-
-        // Reject other origins
-        return callback(new Error('Not allowed by CORS'));
-    },
+    origin: process.env.TRUSTED_ORIGINS?.split(',') || ['http://localhost:5173'],
     credentials: true,
 }
 app.use(cors(corsOptions))
+const authHandler = toNodeHandler(auth);
+app.all('/api/auth/*any', async (req, res, next) => {
+    try {
+        await authHandler(req, res);
+    } catch (error: any) {
+        console.error('Better-auth error:', error);
+        if (!res.headersSent) {
+            res.status(500).json({
+                message: error?.message || 'Authentication error',
+                error: process.env.NODE_ENV === 'development' ? error?.stack : undefined
+            });
+        }
+    }
+});
 
-// Better Auth setup - must be before express.json()
-app.use('/api/auth', toNodeHandler(auth)); // Fixed route pattern
+
 
 app.use(express.json({limit: '50mb'}))
 
@@ -51,5 +47,6 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
     }
 });
 
-// Export for serverless deployment
-export default serverless(app);
+app.listen(port, () => {
+    console.log(`Server is running at http://localhost:${port}`);
+});
