@@ -4,7 +4,6 @@ import { prismaAdapter } from "better-auth/adapters/prisma";
 import prisma from "./prisma.js";
 const trustedOrigins = process.env.TRUSTED_ORIGINS?.split(',') || [
   'http://localhost:5173', // Local development
-  'https://website-builder-ai-a3qj.vercel.app', // Vercel deployment
 ];
 
   
@@ -12,15 +11,32 @@ export const auth = betterAuth({
     database: prismaAdapter(prisma, {
         provider: "postgresql",
     }),
-      emailAndPassword: { 
-    enabled: true, 
-  }, 
+      emailAndPassword: {
+    enabled: true,
+  },
   user:{
     deleteUser:{
       enabled: true
     }
   },
-  trustedOrigins,
+  trustedOrigins: (request) => {
+    const origin = request?.headers.get('origin') || request?.headers.get('referer');
+
+    // Start with default origins
+    const allowedOrigins = ['http://localhost:5173'];
+
+    // Add environment origins
+    if (process.env.TRUSTED_ORIGINS) {
+      allowedOrigins.push(...process.env.TRUSTED_ORIGINS.split(','));
+    }
+
+    // Allow Vercel deployments for this project (website-builder-ai-a3qj-*)
+    if (origin && origin.startsWith('https://website-builder-ai-a3qj-') && origin.endsWith('.vercel.app')) {
+      allowedOrigins.push(origin);
+    }
+
+    return allowedOrigins;
+  },
   baseURL: process.env.BETTER_AUTH_URL!,
   secret:   process.env.BETTER_AUTH_SECRET!,
   advanced: {
