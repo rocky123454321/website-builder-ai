@@ -31,7 +31,7 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 // Better Auth setup - must be before express.json()
-app.all('/api/auth/*', toNodeHandler(auth));
+app.use('/api/auth', toNodeHandler(auth));
 app.use(express.json({ limit: '50mb' }));
 app.get('/', (req, res) => {
     res.send('Server is Live!');
