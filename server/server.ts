@@ -64,7 +64,7 @@ app.use(express.json({ limit: '50mb' }));
 
 // Health check route
 app.get('/', (req: Request, res: Response) => {
-  res.send('Server is running');
+  res.send('Server is running123');
 });
 
 // Routes
