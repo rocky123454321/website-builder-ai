@@ -66,10 +66,3 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 
 // Export for serverless deployment
 export default serverless(app);
-
-// Local development (only run if not in serverless environment)
-if (require.main === module) {
-    app.listen(port, () => {
-        console.log(`Server is running at http://localhost:${port}`);
-    });
-}
