@@ -2,7 +2,10 @@ import 'dotenv/config'
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import prisma from "./prisma.js";
-const trustedOrigins = process.env.TRUSTED_ORIGINS?.split(',') || [];
+const trustedOrigins = process.env.TRUSTED_ORIGINS?.split(',') || [
+  'http://localhost:5173', // Local development
+  'https://website-builder-ai-a3qj.vercel.app', // Vercel deployment
+];
 
   
 export const auth = betterAuth({

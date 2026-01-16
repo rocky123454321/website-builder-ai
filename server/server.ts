@@ -13,7 +13,10 @@ const PORT = process.env.PORT || 3000;
 
 // Configure CORS using trusted origins from Render environment variables
 const corsOptions = {
-  origin: process.env.TRUSTED_ORIGINS?.split(',') || ['http://localhost:5173'],
+  origin: process.env.TRUSTED_ORIGINS?.split(',') || [
+    'http://localhost:5173', // Local development
+    'https://website-builder-ai-a3qj.vercel.app', // Vercel deployment
+  ],
   credentials: true,
 };
 app.use(cors(corsOptions));
