@@ -6,8 +6,8 @@
   "type": "module",
   "scripts": {
     "start": "tsx server.ts",
-    "server": "tsx server.ts",
-    "dev": "nodemon --exec \"tsx server.ts\""
+    "server": "nodemon --exec \"tsx server.ts\" --env-file .env",
+    "build": "tsc"
   },
   "keywords": [],
   "author": "",
