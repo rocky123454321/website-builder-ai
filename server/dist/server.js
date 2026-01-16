@@ -10,7 +10,6 @@ const PORT = process.env.PORT || 3000;
 // Configure CORS using trusted origins from Render environment variables
 const defaultOrigins = [
     'http://localhost:5173', // Local development
-    'https://website-builder-ai-a3qj-oe2dhjab7-rocky123454321s-projects.vercel.app', // Vercel deployment
 ];
 const corsOptions = {
     origin: (origin, callback) => {
@@ -21,6 +20,11 @@ const corsOptions = {
         const trustedOrigins = process.env.TRUSTED_ORIGINS?.split(',') || defaultOrigins;
         // Check if the origin is in the trusted list
         if (trustedOrigins.includes(origin)) {
+            return callback(null, true);
+        }
+        // Allow Vercel deployments for this project (website-builder-ai-a3qj-*)
+        // This prevents having to update CORS for every Vercel redeploy
+        if (origin.startsWith('https://website-builder-ai-a3qj-') && origin.endsWith('.vercel.app')) {
             return callback(null, true);
         }
         // Reject the request
@@ -49,7 +53,7 @@ app.all('/api/auth/*any', async (req, res, next) => {
 app.use(express.json({ limit: '50mb' }));
 // Health check route
 app.get('/', (req, res) => {
-    res.send('Server is Live!now');
+    res.send('Server is Live! now');
 });
 // Routes
 app.use('/api/user', userRouter);
