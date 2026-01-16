@@ -2,6 +2,12 @@ import 'dotenv/config'
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import prisma from "./prisma.js";
+
+console.log('Environment variables check:');
+console.log('BETTER_AUTH_URL:', process.env.BETTER_AUTH_URL ? 'Set' : 'Not set');
+console.log('BETTER_AUTH_SECRET:', process.env.BETTER_AUTH_SECRET ? 'Set (length: ' + process.env.BETTER_AUTH_SECRET?.length + ')' : 'Not set');
+console.log('NODE_ENV:', process.env.NODE_ENV);
+
 const trustedOrigins = process.env.TRUSTED_ORIGINS?.split(',') || [
   'http://localhost:5173', // Local development
 ];
@@ -38,8 +44,8 @@ export const auth = betterAuth({
 
     return allowedOrigins;
   },
-  baseURL: process.env.BETTER_AUTH_URL!,
-  secret:   process.env.BETTER_AUTH_SECRET!,
+  baseURL: process.env.BETTER_AUTH_URL || 'https://website-builder-ai-zugc.onrender.com',
+  secret:   process.env.BETTER_AUTH_SECRET || 'fallback-secret-for-development-only-replace-in-production',
   advanced: {
     cookies:{
         session_token:{
