@@ -7,7 +7,8 @@
   "scripts": {
     "start": "tsx server.ts",
     "server": "nodemon --exec \"tsx server.ts\" --env-file .env",
-    "build": "tsc"
+    "build": "prisma generate && tsc",
+    "postinstall": "prisma generate"
   },
   "keywords": [],
   "author": "",
