@@ -44,7 +44,7 @@ export const auth = betterAuth({
 
     return allowedOrigins;
   },
-  baseURL: process.env.BETTER_AUTH_URL || 'https://website-builder-ai-zugc.onrender.com',
+  baseURL: process.env.BETTER_AUTH_URL || 'https://website-builder-ai-j2a6.vercel.app',
   secret:   process.env.BETTER_AUTH_SECRET || 'fallback-secret-for-development-only-replace-in-production',
   advanced: {
     cookies:{

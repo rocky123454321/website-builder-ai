@@ -54,7 +54,7 @@ app.all('/api/auth/*any', async (req, res, next) => {
 app.use(express.json({ limit: '50mb' }));
 // Health check route
 app.get('/', (req, res) => {
-    res.send('Server is running');
+    res.send('Server is running123');
 });
 // Routes
 app.use('/api/user', userRouter);
