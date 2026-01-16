@@ -29,9 +29,10 @@ const corsOptions = {
       return callback(null, true);
     }
 
-    // Allow Vercel deployments for this project (website-builder-ai-a3qj-*)
+    // Allow Vercel deployments for this project
     // This prevents having to update CORS for every Vercel redeploy
-    if (origin.startsWith('https://website-builder-ai-a3qj-') && origin.endsWith('.vercel.app')) {
+    if (origin === 'https://website-builder-ai-a3qj.vercel.app' ||
+        (origin.startsWith('https://website-builder-ai-a3qj-') && origin.endsWith('.vercel.app'))) {
       return callback(null, true);
     }
 

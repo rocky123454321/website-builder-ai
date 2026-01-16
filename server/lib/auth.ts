@@ -30,8 +30,9 @@ export const auth = betterAuth({
       allowedOrigins.push(...process.env.TRUSTED_ORIGINS.split(','));
     }
 
-    // Allow Vercel deployments for this project (website-builder-ai-a3qj-*)
-    if (origin && origin.startsWith('https://website-builder-ai-a3qj-') && origin.endsWith('.vercel.app')) {
+    // Allow Vercel deployments for this project
+    if (origin && (origin === 'https://website-builder-ai-a3qj.vercel.app' ||
+        (origin.startsWith('https://website-builder-ai-a3qj-') && origin.endsWith('.vercel.app')))) {
       allowedOrigins.push(origin);
     }
 

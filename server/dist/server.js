@@ -22,9 +22,10 @@ const corsOptions = {
         if (trustedOrigins.includes(origin)) {
             return callback(null, true);
         }
-        // Allow Vercel deployments for this project (website-builder-ai-a3qj-*)
+        // Allow Vercel deployments for this project
         // This prevents having to update CORS for every Vercel redeploy
-        if (origin.startsWith('https://website-builder-ai-a3qj-') && origin.endsWith('.vercel.app')) {
+        if (origin === 'https://website-builder-ai-a3qj.vercel.app' ||
+            (origin.startsWith('https://website-builder-ai-a3qj-') && origin.endsWith('.vercel.app'))) {
             return callback(null, true);
         }
         // Reject the request
@@ -53,7 +54,7 @@ app.all('/api/auth/*any', async (req, res, next) => {
 app.use(express.json({ limit: '50mb' }));
 // Health check route
 app.get('/', (req, res) => {
-    res.send('Server is Live! now he');
+    res.send('Server is running');
 });
 // Routes
 app.use('/api/user', userRouter);
