@@ -2,13 +2,8 @@ import 'dotenv/config';
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import prisma from "./prisma.js";
-console.log('Environment variables check:');
-console.log('BETTER_AUTH_URL:', process.env.BETTER_AUTH_URL ? 'Set' : 'Not set');
-console.log('BETTER_AUTH_SECRET:', process.env.BETTER_AUTH_SECRET ? 'Set (length: ' + process.env.BETTER_AUTH_SECRET?.length + ')' : 'Not set');
-console.log('NODE_ENV:', process.env.NODE_ENV);
-const trustedOrigins = process.env.TRUSTED_ORIGINS?.split(',') || [
-    'http://localhost:5173', // Local development
-];
+const trustedOrigins = process.env.TRUSTED_ORIGINS?.split(',') || [];
+//alldone
 export const auth = betterAuth({
     database: prismaAdapter(prisma, {
         provider: "postgresql",
@@ -21,23 +16,9 @@ export const auth = betterAuth({
             enabled: true
         }
     },
-    trustedOrigins: (request) => {
-        const origin = request?.headers.get('origin') || request?.headers.get('referer');
-        // Start with default origins
-        const allowedOrigins = ['http://localhost:5173'];
-        // Add environment origins
-        if (process.env.TRUSTED_ORIGINS) {
-            allowedOrigins.push(...process.env.TRUSTED_ORIGINS.split(','));
-        }
-        // Allow Vercel deployments for this project
-        if (origin && (origin === 'https://website-builder-ai-a3qj.vercel.app' ||
-            (origin.startsWith('https://website-builder-ai-a3qj-') && origin.endsWith('.vercel.app')))) {
-            allowedOrigins.push(origin);
-        }
-        return allowedOrigins;
-    },
-    baseURL: process.env.BETTER_AUTH_URL || 'https://website-builder-ai-j2a6.vercel.app',
-    secret: process.env.BETTER_AUTH_SECRET || 'fallback-secret-for-development-only-replace-in-production',
+    trustedOrigins,
+    baseURL: process.env.BETTER_AUTH_URL,
+    secret: process.env.BETTER_AUTH_SECRET,
     advanced: {
         cookies: {
             session_token: {

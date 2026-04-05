@@ -25,7 +25,7 @@ const ProjectPage = () => {
 
   const fetchProject = async () => {
     try {
-      const { data } = await api.get(`/api/user/project/${projectId}`)
+     const { data } = await api.get(`/api/user/project/${projectId}`) 
       setProject(data.project)
       setIsGenerating(data.project.current_code? false: true)
       setLoading(false)
@@ -72,7 +72,7 @@ const ProjectPage = () => {
 
   const togglePublish = async () => {
     try {
-    const {data} = await api.get(`/api/user/publish-toggle/${projectId}`)
+   const {data} = await api.get(`/api/user/publish-toggle/${projectId}`)
     toast.success(data.message)
     setProject((prev)=>prev ?({...prev, isPublished: !prev.isPublished}) : null)
    } catch (error: any) {
@@ -81,22 +81,26 @@ const ProjectPage = () => {
    }
   }
 
-  useEffect(() => {
+  // ✅ Add isPending check
+useEffect(() => {
+    if (isPending) return // ← wait for session to load first
+
     if (session?.user) {
       fetchProject()
-    } else if (!isPending && !session?.user) {
+    } else {
       navigate("/")
       toast.message("Please login to view your project")
     }
-  }, [session?.user])
+  }, [session?.user, isPending]) // ← add isPending as dependency
 
-  useEffect(() => {
+ // ✅ Also guard the polling — add session check
+useEffect(() => {
+    if (!session?.user) return // ← don't poll if not authenticated
     if (project && !project?.current_code) {
       const intervalId = setInterval(fetchProject, 10000)
       return () => clearInterval(intervalId)
     }
-    
-  }, [project]);
+}, [project, session?.user]) // ← add session dependency
 
   if (loading) {
     return (

@@ -49,7 +49,7 @@ export const makeRevision = async (req: Request, res: Response) => {
         })
 
   const promptEnhanceResponce = await openai.chat.completions.create({
-    model: 'mistralai/mistral-7b-instruct:free',
+    model: 'qwen/qwen3.6-plus:free',
     messages:[
         {
             role: 'system',
@@ -91,7 +91,7 @@ Return ONLY the enhanced request, nothing else. Keep it concise (1-2 sentences).
     })
 
         const codeGenerationResponse = await openai.chat.completions.create({
-        model: 'mistralai/mistral-7b-instruct:free',
+        model: 'qwen/qwen3.6-plus:free',
         messages: [
             {
                 role: 'system',

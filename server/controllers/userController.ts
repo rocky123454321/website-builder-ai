@@ -98,7 +98,7 @@ export const createUserProject = async (req: Request, res: Response) => {
         res.json({ projectId: project.id })
 
         const promptEnhanceResponse = await openai.chat.completions.create({
-    model:'mistralai/devstral-2512:free',
+    model:'qwen/qwen3.6-plus:free',
     messages: [
         {
             role: 'system',
@@ -142,7 +142,7 @@ await prisma.conversation.create({
 //here
 
 const codeGenerationResponse = await openai.chat.completions.create({
-    model: 'mistralai/devstral-2512:free',
+    model: 'qwen/qwen3.6-plus:free',
     messages:[
         {
             role: 'system',
