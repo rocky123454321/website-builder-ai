@@ -4,10 +4,10 @@
   "description": "",
   "main": "index.js",
   "type": "module",
-  "scripts": {
-    "start": "node dist/server.js",
+ "scripts": {
+    "start": "tsx server.ts",
     "server": "nodemon --exec \"tsx server.ts\" --env-file .env",
-    "build": "npx prisma generate && npx tsc && cp -r generated dist/generated"
+    "build": "npx prisma generate"
   },
   "keywords": [],
   "author": "",
