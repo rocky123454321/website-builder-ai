@@ -1,6 +1,6 @@
 import { Request, Response } from 'express'
 import prisma from '../lib/prisma.js';
-import openai from '../configs/openai.js';
+import gemini from '../configs/gemini.js';
 //gods
 export const getUserCredits = async (req: Request, res: Response) => {
     try {
@@ -37,22 +37,19 @@ export const createUserProject = async (req: Request, res: Response) => {
             return res.status(403).json({ message: "Add credits to create more projects" })
         }
 
-        // Create project FIRST
         const project = await prisma.websiteProject.create({
             data: {
                 name: initial_prompt.length > 50 ? initial_prompt.substring(0, 47) + '...' : initial_prompt,
                 initial_prompt,
-                userId: userId as string  // ✅ fixed
+                userId: userId as string
             }
         })
 
-        // Increment totalCreation IMMEDIATELY after project creation
         await prisma.user.update({
-            where: { id: userId as string },  // ✅ fixed
+            where: { id: userId as string },
             data: { totalCreation: { increment: 1 } }
         })
 
-        // Log user message
         await prisma.conversation.create({
             data: {
                 role: 'user',
@@ -62,38 +59,31 @@ export const createUserProject = async (req: Request, res: Response) => {
         })
 
         await prisma.user.update({
-            where: { id: userId as string },  // ✅ fixed
+            where: { id: userId as string },
             data: { credits: { decrement: 5 } }
         })
 
         // Return projectId to client immediately
         res.json({ projectId: project.id })
 
-        const promptEnhanceResponse = await openai.chat.completions.create({
-            model: 'qwen/qwen3.6-plus:free',
-            messages: [
-                {
-                    role: 'system',
-                    content: `You are a prompt enhancement specialist. Take the user's website request and expand it into a detailed, comprehensive prompt that will help create the best possible website.
+        // Prompt Enhancement
+        const promptEnhanceResult = await gemini.generateContent(`
+You are a prompt enhancement specialist. Take the user's website request and expand it into a detailed, comprehensive prompt that will help create the best possible website.
 
-    Enhance this prompt by:
-    1. Adding specific design details (layout, color scheme, typography)
-    2. Specifying key sections and features
-    3. Describing the user experience and interactions
-    4. Including modern web design best practices
-    5. Mentioning responsive design requirements
-    6. Adding any missing but important elements
+Enhance this prompt by:
+1. Adding specific design details (layout, color scheme, typography)
+2. Specifying key sections and features
+3. Describing the user experience and interactions
+4. Including modern web design best practices
+5. Mentioning responsive design requirements
+6. Adding any missing but important elements
 
 Return ONLY the enhanced prompt, nothing else. Make it detailed but concise (2-3 paragraphs max).
-`
-                }, {
-                    role: 'user',
-                    content: initial_prompt
-                }
-            ]
-        })
 
-        const enhancedPrompt = promptEnhanceResponse.choices[0].message.content
+User request: "${initial_prompt}"
+        `)
+
+        const enhancedPrompt = promptEnhanceResult.response.text()
 
         await prisma.conversation.create({
             data: {
@@ -111,45 +101,35 @@ Return ONLY the enhanced prompt, nothing else. Make it detailed but concise (2-3
             }
         })
 
-        const codeGenerationResponse = await openai.chat.completions.create({
-            model: 'qwen/qwen3.6-plus:free',
-            messages: [
-                {
-                    role: 'system',
-                    content: `You are an expert web developer. Create a complete, production-ready, single-page website based on this request: "${enhancedPrompt}"
+        // Code Generation
+        const codeGenerationResult = await gemini.generateContent(`
+You are an expert web developer. Create a complete, production-ready, single-page website based on this request: "${enhancedPrompt}"
 
-    CRITICAL REQUIREMENTS:
-    - You MUST output valid HTML ONLY. 
-    - Use Tailwind CSS for ALL styling
-    - Include this EXACT script in the <head>: <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    - Use Tailwind utility classes extensively for styling, animations, and responsiveness
-    - Make it fully functional and interactive with JavaScript in <script> tag before closing </body>
-    - Use modern, beautiful design with great UX using Tailwind classes
-    - Make it responsive using Tailwind responsive classes (sm:, md:, lg:, xl:)
-    - Use Tailwind animations and transitions (animate-*, transition-*)
-    - Include all necessary meta tags
-    - Use Google Fonts CDN if needed for custom fonts
-    - Use placeholder images from https://placehold.co/600x400
-    - Use Tailwind gradient classes for beautiful backgrounds
-    - Make sure all buttons, cards, and components use Tailwind styling
+CRITICAL REQUIREMENTS:
+- You MUST output valid HTML ONLY.
+- Use Tailwind CSS for ALL styling
+- Include this EXACT script in the <head>: <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+- Use Tailwind utility classes extensively for styling, animations, and responsiveness
+- Make it fully functional and interactive with JavaScript in <script> tag before closing </body>
+- Use modern, beautiful design with great UX using Tailwind classes
+- Make it responsive using Tailwind responsive classes (sm:, md:, lg:, xl:)
+- Use Tailwind animations and transitions (animate-*, transition-*)
+- Include all necessary meta tags
+- Use Google Fonts CDN if needed for custom fonts
+- Use placeholder images from https://placehold.co/600x400
+- Use Tailwind gradient classes for beautiful backgrounds
+- Make sure all buttons, cards, and components use Tailwind styling
 
-    CRITICAL HARD RULES:
-    1. You MUST put ALL output ONLY into message.content.
-    2. You MUST NOT place anything in "reasoning", "analysis", "reasoning_details", or any hidden fields.
-    3. You MUST NOT include internal thoughts, explanations, analysis, comments, or markdown.
-    4. Do NOT include markdown, explanations, notes, or code fences.
+CRITICAL HARD RULES:
+1. Return HTML code ONLY - no markdown, no code fences, no explanations
+2. Do NOT include \`\`\`html or \`\`\` anywhere
+3. Start directly with <!DOCTYPE html>
 
-    The HTML should be complete and ready to render as-is with Tailwind CSS.
-`
-                }, {
-                    role: 'user',
-                    content: enhancedPrompt || ''
-                }
-            ]
-        })
+The HTML should be complete and ready to render as-is with Tailwind CSS.
+        `)
 
-        const code = codeGenerationResponse.choices[0].message.content || '';
-        const cleanedCode = code.trim();
+        const code = codeGenerationResult.response.text() || '';
+        const cleanedCode = code.replace(/```html/g, '').replace(/```/g, '').trim();
 
         const version = await prisma.version.create({
             data: {
@@ -162,7 +142,7 @@ Return ONLY the enhanced prompt, nothing else. Make it detailed but concise (2-3
         await prisma.conversation.create({
             data: {
                 role: 'assistant',
-                content: "I've create the website",
+                content: "I've created the website",
                 projectId: project.id
             }
         })
@@ -177,7 +157,7 @@ Return ONLY the enhanced prompt, nothing else. Make it detailed but concise (2-3
 
     } catch (error: any) {
         await prisma.user.update({
-            where: { id: userId as string },  // ✅ fixed
+            where: { id: userId as string },
             data: { credits: { increment: 5 } }
         })
         console.log(error)
@@ -192,7 +172,7 @@ export const getUserProject = async (req: Request, res: Response) => {
             return res.status(401).json({ message: 'Unauthorized' })
         }
 
-        const projectId = req.params.projectId as string  // ✅ fixed
+        const projectId = req.params.projectId as string
 
         const project = await prisma.websiteProject.findFirst({
             where: { id: projectId, userId },
@@ -243,7 +223,7 @@ export const togglePublish = async (req: Request, res: Response) => {
             return res.status(401).json({ message: 'Unauthorized' })
         }
 
-        const projectId = req.params.projectId as string  // ✅ fixed
+        const projectId = req.params.projectId as string
 
         const project = await prisma.websiteProject.findUnique({
             where: { id: projectId, userId }

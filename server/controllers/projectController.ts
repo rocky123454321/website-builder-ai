@@ -1,4 +1,4 @@
-import openai from '../configs/openai.js';
+import gemini from '../configs/gemini.js';
 import { Request, Response } from 'express'
 import prisma from '../lib/prisma.js';
 //goods
@@ -11,7 +11,7 @@ export const makeRevision = async (req: Request, res: Response) => {
         const user = await prisma.user.findUnique({
             where: { id: userId }
         })
-      
+
         if (!userId || !user) {
             return res.status(401).json({ message: 'Unauthorized' })
         }
@@ -33,7 +33,6 @@ export const makeRevision = async (req: Request, res: Response) => {
             return res.status(404).json({ message: 'Project not found' })
         }
 
-        // Log user message
         await prisma.conversation.create({
             data: {
                 role: 'user',
@@ -42,37 +41,27 @@ export const makeRevision = async (req: Request, res: Response) => {
             }
         })
 
-        // Decrement credits BEFORE async work starts
         await prisma.user.update({
             where: { id: userId },
             data: { credits: { decrement: 5 } }
         })
 
-        const promptEnhanceResponce = await openai.chat.completions.create({
-            model: 'qwen/qwen3.6-plus:free',
-            messages: [
-                {
-                    role: 'system',
-                    content: `
+        // Prompt Enhancement
+        const promptEnhanceResult = await gemini.generateContent(`
 You are a prompt enhancement specialist. The user wants to make changes to their website. Enhance their request to be more specific and actionable for a web developer.
 
-    Enhance this by:
-    1. Being specific about what elements to change
-    2. Mentioning design details (colors, spacing, sizes)
-    3. Clarifying the desired outcome
-    4. Using clear technical terms
+Enhance this by:
+1. Being specific about what elements to change
+2. Mentioning design details (colors, spacing, sizes)
+3. Clarifying the desired outcome
+4. Using clear technical terms
 
 Return ONLY the enhanced request, nothing else. Keep it concise (1-2 sentences).
 
-`
-                },
-                {
-                    role: 'user',
-                    content: `User request: "${message}"`
-                }
-            ]
-        })
-        const enhancedPrompt = promptEnhanceResponce.choices[0].message.content;
+User request: "${message}"
+        `)
+
+        const enhancedPrompt = promptEnhanceResult.response.text()
 
         await prisma.conversation.create({
             data: {
@@ -90,38 +79,37 @@ Return ONLY the enhanced request, nothing else. Keep it concise (1-2 sentences).
             }
         })
 
-        const codeGenerationResponse = await openai.chat.completions.create({
-            model: 'qwen/qwen3.6-plus:free',
-            messages: [
-                {
-                    role: 'system',
-                    content: `You are an expert web developer. 
+        // Code Generation
+        const codeGenerationResult = await gemini.generateContent(`
+You are an expert web developer.
 
-    CRITICAL REQUIREMENTS:
-    - Return ONLY the complete updated HTML code with the requested changes.
-    - Use Tailwind CSS for ALL styling (NO custom CSS).
-    - Use Tailwind utility classes for all styling changes.
-    - Include all JavaScript in <script> tags before closing </body>
-    - Make sure it's a complete, standalone HTML document with Tailwind CSS
-    - Return the HTML Code Only, nothing else
+CRITICAL REQUIREMENTS:
+- Return ONLY the complete updated HTML code with the requested changes.
+- Use Tailwind CSS for ALL styling (NO custom CSS).
+- Use Tailwind utility classes for all styling changes.
+- Include all JavaScript in <script> tags before closing </body>
+- Make sure it's a complete, standalone HTML document with Tailwind CSS
 
-    Apply the requested changes while maintaining the Tailwind CSS styling approach.
-`
-                },
-                {
-                    role: 'user',
-                    content: `Here is the current website code: "${currentProject.current_code}" 
-            The user wants these changes: "${enhancedPrompt}"`
-                }
-            ]
-        })
-        const code = codeGenerationResponse.choices[0].message.content || '';
-        const cleanedCode = code;
+CRITICAL HARD RULES:
+1. Return HTML code ONLY - no markdown, no code fences, no explanations
+2. Do NOT include \`\`\`html or \`\`\` anywhere
+3. Start directly with <!DOCTYPE html>
+
+Apply the requested changes while maintaining the Tailwind CSS styling approach.
+
+Here is the current website code:
+${currentProject.current_code}
+
+The user wants these changes: "${enhancedPrompt}"
+        `)
+
+        const code = codeGenerationResult.response.text() || '';
+        const cleanedCode = code.replace(/```html/g, '').replace(/```/g, '').trim();
 
         const version = await prisma.version.create({
             data: {
                 code: cleanedCode,
-                description: 'chagest',
+                description: 'revision',
                 projectId
             }
         })
@@ -129,7 +117,7 @@ Return ONLY the enhanced request, nothing else. Keep it concise (1-2 sentences).
         await prisma.conversation.create({
             data: {
                 role: 'assistant',
-                content: "I've changes your website",
+                content: "I've updated your website",
                 projectId
             }
         })
@@ -142,7 +130,7 @@ Return ONLY the enhanced request, nothing else. Keep it concise (1-2 sentences).
             }
         })
 
-        res.json({ message: 'changes successfully...' })
+        res.json({ message: 'Changes applied successfully' })
 
     } catch (error: any) {
         await prisma.user.update({
@@ -154,8 +142,6 @@ Return ONLY the enhanced request, nothing else. Keep it concise (1-2 sentences).
     }
 }
 
-
-
 export const rollBackToVersion = async (req: Request, res: Response) => {
     try {
         const userId = req.userId;
@@ -164,8 +150,8 @@ export const rollBackToVersion = async (req: Request, res: Response) => {
             return res.status(401).json({ message: 'Unauthorized' })
         }
 
-        const projectId = req.params.projectId as string  // ✅ fixed
-        const versionId = req.params.versionId as string  // ✅ fixed
+        const projectId = req.params.projectId as string
+        const versionId = req.params.versionId as string
 
         const project = await prisma.websiteProject.findUnique({
             where: { id: projectId, userId },
@@ -176,7 +162,7 @@ export const rollBackToVersion = async (req: Request, res: Response) => {
             return res.status(404).json({ message: 'Project not found' })
         }
 
-        const version = project.versions.find((v: { id: string }) => v.id === versionId)  // ✅ fixed implicit any
+        const version = project.versions.find((v: { id: string }) => v.id === versionId)
 
         if (!version) {
             return res.status(404).json({ message: 'Version not found' })
@@ -207,8 +193,7 @@ export const rollBackToVersion = async (req: Request, res: Response) => {
 
 export const deleteProject = async (req: Request, res: Response) => {
     try {
-        const userId = req.userId;
-        const projectId = req.params.projectId as string  // ✅ fixed
+        const projectId = req.params.projectId as string
 
         await prisma.websiteProject.delete({
             where: { id: projectId },
@@ -224,7 +209,7 @@ export const deleteProject = async (req: Request, res: Response) => {
 export const getProjectPreview = async (req: Request, res: Response) => {
     try {
         const userId = req.userId;
-        const projectId = req.params.projectId as string  // ✅ fixed
+        const projectId = req.params.projectId as string
 
         if (!userId) {
             return res.status(401).json({ message: 'Unauthorized' })
@@ -262,7 +247,7 @@ export const getPublishProject = async (req: Request, res: Response) => {
 
 export const getProjectById = async (req: Request, res: Response) => {
     try {
-        const projectId = req.params.projectId as string  // ✅ fixed
+        const projectId = req.params.projectId as string
         const project = await prisma.websiteProject.findFirst({
             where: { id: projectId }
         })
@@ -281,7 +266,7 @@ export const getProjectById = async (req: Request, res: Response) => {
 export const saveProjectCode = async (req: Request, res: Response) => {
     try {
         const userId = req.userId
-        const projectId = req.params.projectId as string  // ✅ fixed
+        const projectId = req.params.projectId as string
         const { code } = req.body
 
         if (!userId) {
