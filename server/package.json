@@ -5,7 +5,7 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "start": "tsx server.ts",
+    "start": "npx tsx server.ts",
     "server": "nodemon --exec \"tsx server.ts\" --env-file .env",
     "build": "npx prisma generate"
   },
