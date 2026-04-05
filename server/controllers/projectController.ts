@@ -5,7 +5,7 @@ import prisma from '../lib/prisma.js';
 export const makeRevision = async (req: Request, res: Response) => {
     const userId = req.userId;
     try {
-        const { projectId } = req.params
+        const projectId = req.params.projectId as string
         const { message } = req.body;
 
         const user = await prisma.user.findUnique({
@@ -48,12 +48,12 @@ export const makeRevision = async (req: Request, res: Response) => {
             data: { credits: { decrement: 5 } }
         })
 
-  const promptEnhanceResponce = await openai.chat.completions.create({
-    model: 'qwen/qwen3.6-plus:free',
-    messages:[
-        {
-            role: 'system',
-            content: `
+        const promptEnhanceResponce = await openai.chat.completions.create({
+            model: 'qwen/qwen3.6-plus:free',
+            messages: [
+                {
+                    role: 'system',
+                    content: `
 You are a prompt enhancement specialist. The user wants to make changes to their website. Enhance their request to be more specific and actionable for a web developer.
 
     Enhance this by:
@@ -65,37 +65,37 @@ You are a prompt enhancement specialist. The user wants to make changes to their
 Return ONLY the enhanced request, nothing else. Keep it concise (1-2 sentences).
 
 `
-        },
-        {
-            role:'user',
-            content:`User request: "${message}"`
-        }
-    ]
-  })
-    const enhancedPrompt = promptEnhanceResponce.choices[0].message.content;
+                },
+                {
+                    role: 'user',
+                    content: `User request: "${message}"`
+                }
+            ]
+        })
+        const enhancedPrompt = promptEnhanceResponce.choices[0].message.content;
 
-    await prisma.conversation.create({
-        data:{
-            role: 'assistant',
-            content:`I've enhanced your prompt : "${enhancedPrompt}"`,
-            projectId
-        }
-    })
+        await prisma.conversation.create({
+            data: {
+                role: 'assistant',
+                content: `I've enhanced your prompt : "${enhancedPrompt}"`,
+                projectId
+            }
+        })
 
-    await prisma.conversation.create({
-        data:{
-            role: 'assistant',
-            content:'I am currently building a website.',
-            projectId
-        }
-    })
+        await prisma.conversation.create({
+            data: {
+                role: 'assistant',
+                content: 'I am currently building a website.',
+                projectId
+            }
+        })
 
         const codeGenerationResponse = await openai.chat.completions.create({
-        model: 'qwen/qwen3.6-plus:free',
-        messages: [
-            {
-                role: 'system',
-                content: `You are an expert web developer. 
+            model: 'qwen/qwen3.6-plus:free',
+            messages: [
+                {
+                    role: 'system',
+                    content: `You are an expert web developer. 
 
     CRITICAL REQUIREMENTS:
     - Return ONLY the complete updated HTML code with the requested changes.
@@ -107,47 +107,45 @@ Return ONLY the enhanced request, nothing else. Keep it concise (1-2 sentences).
 
     Apply the requested changes while maintaining the Tailwind CSS styling approach.
 `
-            },
-            {
-                role: 'user',
-                content: `Here is the current website code: "${currentProject.current_code}" 
+                },
+                {
+                    role: 'user',
+                    content: `Here is the current website code: "${currentProject.current_code}" 
             The user wants these changes: "${enhancedPrompt}"`
+                }
+            ]
+        })
+        const code = codeGenerationResponse.choices[0].message.content || '';
+        const cleanedCode = code;
+
+        const version = await prisma.version.create({
+            data: {
+                code: cleanedCode,
+                description: 'chagest',
+                projectId
             }
-        ]
-    })
-     const code = codeGenerationResponse.choices[0].message.content || '';
+        })
 
-    const cleanedCode = code;
+        await prisma.conversation.create({
+            data: {
+                role: 'assistant',
+                content: "I've changes your website",
+                projectId
+            }
+        })
 
-    const version = await prisma.version.create({
-        data: {
-            code: cleanedCode,
-            description: 'chagest',
-            projectId
-        }
-    })
+        await prisma.websiteProject.update({
+            where: { id: projectId },
+            data: {
+                current_code: cleanedCode,
+                current_version_index: version.id
+            }
+        })
 
-
-    await prisma.conversation.create({
-        data:{
-            role:'assistant',
-            content: "I've changes your website",
-            projectId
-        }
-    })
-  await prisma.websiteProject.update({
-    where: {id: projectId},
-    data: {
-        current_code: cleanedCode,
-        current_version_index: version.id
-    }
-  })
-res.json({ message: 'changes successfully...' })
-
+        res.json({ message: 'changes successfully...' })
 
     } catch (error: any) {
-
-         await prisma.user.update({
+        await prisma.user.update({
             where: { id: userId },
             data: { credits: { increment: 5 } }
         })
@@ -166,7 +164,8 @@ export const rollBackToVersion = async (req: Request, res: Response) => {
             return res.status(401).json({ message: 'Unauthorized' })
         }
 
-        const { projectId, versionId } = req.params
+        const projectId = req.params.projectId as string  // ✅ fixed
+        const versionId = req.params.versionId as string  // ✅ fixed
 
         const project = await prisma.websiteProject.findUnique({
             where: { id: projectId, userId },
@@ -177,14 +176,14 @@ export const rollBackToVersion = async (req: Request, res: Response) => {
             return res.status(404).json({ message: 'Project not found' })
         }
 
-        const version = project.versions.find((version) => version.id === versionId)
+        const version = project.versions.find((v: { id: string }) => v.id === versionId)  // ✅ fixed implicit any
 
         if (!version) {
             return res.status(404).json({ message: 'Version not found' })
         }
 
         await prisma.websiteProject.update({
-            where: { id: projectId , userId},
+            where: { id: projectId, userId },
             data: {
                 current_code: version.code,
                 current_version_index: version.id
@@ -209,8 +208,7 @@ export const rollBackToVersion = async (req: Request, res: Response) => {
 export const deleteProject = async (req: Request, res: Response) => {
     try {
         const userId = req.userId;
-        const { projectId } = req.params
-     
+        const projectId = req.params.projectId as string  // ✅ fixed
 
         await prisma.websiteProject.delete({
             where: { id: projectId },
@@ -226,7 +224,7 @@ export const deleteProject = async (req: Request, res: Response) => {
 export const getProjectPreview = async (req: Request, res: Response) => {
     try {
         const userId = req.userId;
-        const { projectId } = req.params
+        const projectId = req.params.projectId as string  // ✅ fixed
 
         if (!userId) {
             return res.status(401).json({ message: 'Unauthorized' })
@@ -264,7 +262,7 @@ export const getPublishProject = async (req: Request, res: Response) => {
 
 export const getProjectById = async (req: Request, res: Response) => {
     try {
-        const { projectId } = req.params
+        const projectId = req.params.projectId as string  // ✅ fixed
         const project = await prisma.websiteProject.findFirst({
             where: { id: projectId }
         })
@@ -283,7 +281,7 @@ export const getProjectById = async (req: Request, res: Response) => {
 export const saveProjectCode = async (req: Request, res: Response) => {
     try {
         const userId = req.userId
-        const { projectId } = req.params
+        const projectId = req.params.projectId as string  // ✅ fixed
         const { code } = req.body
 
         if (!userId) {

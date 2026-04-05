@@ -3,36 +3,16 @@ import prisma from '../lib/prisma.js';
 import openai from '../configs/openai.js';
 //gods
 export const getUserCredits = async (req: Request, res: Response) => {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/bb5bd66d-f839-4986-b085-0c0297026f66',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'server/controllers/userController.ts:5',message:'getUserCredits entry',data:{userId:req.userId},timestamp:Date.now(),sessionId:'debug-session',runId:'initial',hypothesisId:'A,B,C'})}).catch(()=>{});
-    // #endregion
     try {
         const userId = req.userId;
         if (!userId) {
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/bb5bd66d-f839-4986-b085-0c0297026f66',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'server/controllers/userController.ts:10',message:'no userId in request',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'initial',hypothesisId:'A'})}).catch(()=>{});
-            // #endregion
             return res.status(401).json({ message: 'Unauthorized' })
         }
 
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/bb5bd66d-f839-4986-b085-0c0297026f66',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'server/controllers/userController.ts:15',message:'before user lookup',data:{userId},timestamp:Date.now(),sessionId:'debug-session',runId:'initial',hypothesisId:'D'})}).catch(()=>{});
-        // #endregion
         const user = await prisma.user.findUnique({
             where: { id: userId }
         })
 
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/bb5bd66d-f839-4986-b085-0c0297026f66',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'server/controllers/userController.ts:18',message:'after user lookup',data:{userFound:!!user,credits:user?.credits},timestamp:Date.now(),sessionId:'debug-session',runId:'initial',hypothesisId:'D'})}).catch(()=>{});
-        // #endregion
-/*
-        if (!user) {
-            return res.status(404).json({ message: 'User not found' })
-        }
-*/
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/bb5bd66d-f839-4986-b085-0c0297026f66',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'server/controllers/userController.ts:25',message:'returning credits',data:{credits:user?.credits},timestamp:Date.now(),sessionId:'debug-session',runId:'initial',hypothesisId:'A,B,C,D'})}).catch(()=>{});
-        // #endregion
         res.json({ credits: user?.credits })
     } catch (error: any) {
         console.log(error.code || error.message)
@@ -48,19 +28,11 @@ export const createUserProject = async (req: Request, res: Response) => {
         if (!userId) {
             return res.status(401).json({ message: 'Unauthorized' })
         }
-/*
-        if (!initial_prompt || initial_prompt.trim() === '') {
-            return res.status(400).json({ message: 'Project description is required' })
-        }
-*/
+
         const user = await prisma.user.findUnique({
             where: { id: userId }
         })
-/*
-        if (!user) {
-            return res.status(404).json({ message: 'User not found' })
-        }
-*/
+
         if (user && user.credits < 5) {
             return res.status(403).json({ message: "Add credits to create more projects" })
         }
@@ -70,13 +42,13 @@ export const createUserProject = async (req: Request, res: Response) => {
             data: {
                 name: initial_prompt.length > 50 ? initial_prompt.substring(0, 47) + '...' : initial_prompt,
                 initial_prompt,
-                userId
+                userId: userId as string  // ✅ fixed
             }
         })
 
-        // Decrement credits IMMEDIATELY after project creation
+        // Increment totalCreation IMMEDIATELY after project creation
         await prisma.user.update({
-            where: { id: userId },
+            where: { id: userId as string },  // ✅ fixed
             data: { totalCreation: { increment: 1 } }
         })
 
@@ -90,19 +62,19 @@ export const createUserProject = async (req: Request, res: Response) => {
         })
 
         await prisma.user.update({
-            where: {id:userId},
-            data: {credits: {decrement: 5}}
+            where: { id: userId as string },  // ✅ fixed
+            data: { credits: { decrement: 5 } }
         })
 
         // Return projectId to client immediately
         res.json({ projectId: project.id })
 
         const promptEnhanceResponse = await openai.chat.completions.create({
-    model:'qwen/qwen3.6-plus:free',
-    messages: [
-        {
-            role: 'system',
-            content: `You are a prompt enhancement specialist. Take the user's website request and expand it into a detailed, comprehensive prompt that will help create the best possible website.
+            model: 'qwen/qwen3.6-plus:free',
+            messages: [
+                {
+                    role: 'system',
+                    content: `You are a prompt enhancement specialist. Take the user's website request and expand it into a detailed, comprehensive prompt that will help create the best possible website.
 
     Enhance this prompt by:
     1. Adding specific design details (layout, color scheme, typography)
@@ -114,39 +86,37 @@ export const createUserProject = async (req: Request, res: Response) => {
 
 Return ONLY the enhanced prompt, nothing else. Make it detailed but concise (2-3 paragraphs max).
 `
-        },{
-            role: 'user',
-            content: initial_prompt
-        }
-    ]
-})
+                }, {
+                    role: 'user',
+                    content: initial_prompt
+                }
+            ]
+        })
 
-const enhancedPrompt = promptEnhanceResponse.choices[0].message.content
+        const enhancedPrompt = promptEnhanceResponse.choices[0].message.content
 
-await prisma.conversation.create({
-    data: {
-        role: 'assistant',
-        content: `enhanced : "${enhancedPrompt}"`,
-        projectId: project.id
-    }
-})
+        await prisma.conversation.create({
+            data: {
+                role: 'assistant',
+                content: `enhanced : "${enhancedPrompt}"`,
+                projectId: project.id
+            }
+        })
 
-await prisma.conversation.create({
-    data: {
-        role: 'assistant',
-        content:'Your web project is in progress…',
-        projectId: project.id
-    }
-})
+        await prisma.conversation.create({
+            data: {
+                role: 'assistant',
+                content: 'Your web project is in progress…',
+                projectId: project.id
+            }
+        })
 
-//here
-
-const codeGenerationResponse = await openai.chat.completions.create({
-    model: 'qwen/qwen3.6-plus:free',
-    messages:[
-        {
-            role: 'system',
-            content: `You are an expert web developer. Create a complete, production-ready, single-page website based on this request: "${enhancedPrompt}"
+        const codeGenerationResponse = await openai.chat.completions.create({
+            model: 'qwen/qwen3.6-plus:free',
+            messages: [
+                {
+                    role: 'system',
+                    content: `You are an expert web developer. Create a complete, production-ready, single-page website based on this request: "${enhancedPrompt}"
 
     CRITICAL REQUIREMENTS:
     - You MUST output valid HTML ONLY. 
@@ -170,51 +140,46 @@ const codeGenerationResponse = await openai.chat.completions.create({
     4. Do NOT include markdown, explanations, notes, or code fences.
 
     The HTML should be complete and ready to render as-is with Tailwind CSS.
-
 `
-        },{
-            role:'user',
-            content:enhancedPrompt || ''
-        }
-    ]
-})
+                }, {
+                    role: 'user',
+                    content: enhancedPrompt || ''
+                }
+            ]
+        })
 
- const code = codeGenerationResponse.choices[0].message.content || '';
+        const code = codeGenerationResponse.choices[0].message.content || '';
+        const cleanedCode = code.trim();
 
- const cleanedCode = code.trim();
+        const version = await prisma.version.create({
+            data: {
+                code: cleanedCode,
+                description: 'Initial version',
+                projectId: project.id
+            }
+        })
 
-  //create version for the project
+        await prisma.conversation.create({
+            data: {
+                role: 'assistant',
+                content: "I've create the website",
+                projectId: project.id
+            }
+        })
 
-  const version = await prisma.version.create({
-    data: {
-        code: cleanedCode,
-            description: 'Initial version',
-            projectId: project.id
-    }
-  })
-  await prisma.conversation.create({
-    data: {
-        role: 'assistant',
-        content: "I've create the website",
-        projectId: project.id
-    }
-  })
+        await prisma.websiteProject.update({
+            where: { id: project.id },
+            data: {
+                current_code: cleanedCode,
+                current_version_index: version.id
+            }
+        })
 
-await prisma.websiteProject.update({
-    where: {id: project.id},
-    data: {
-     current_code: cleanedCode,
-            current_version_index: version.id
-
-    }
-})
     } catch (error: any) {
-       
-            await prisma.user.update({
-                where: { id: userId },
-                data: { credits: { increment: 5 } }
-            })
-        
+        await prisma.user.update({
+            where: { id: userId as string },  // ✅ fixed
+            data: { credits: { increment: 5 } }
+        })
         console.log(error)
         res.status(500).json({ message: error.message })
     }
@@ -226,31 +191,29 @@ export const getUserProject = async (req: Request, res: Response) => {
         if (!userId) {
             return res.status(401).json({ message: 'Unauthorized' })
         }
-       const {projectId} = req.params
 
-       const project = await prisma.websiteProject.findFirst({
-        where: {id: projectId, userId},
-        include: {
-            conversation: {
-                orderBy: {timestamp: 'asc'}
+        const projectId = req.params.projectId as string  // ✅ fixed
 
-            },
-            versions: { orderBy: {timestamp: 'asc'}}
+        const project = await prisma.websiteProject.findFirst({
+            where: { id: projectId, userId },
+            include: {
+                conversation: {
+                    orderBy: { timestamp: 'asc' }
+                },
+                versions: { orderBy: { timestamp: 'asc' } }
+            }
+        })
+
+        if (!project) {
+            return res.status(404).json({ message: 'Project not found' })
         }
-       })
 
-       if (!project) {
-           return res.status(404).json({ message: 'Project not found' })
-       }
-
-        res.json({project })
+        res.json({ project })
     } catch (error: any) {
         console.log(error.code || error.message)
         res.status(500).json({ message: error.message })
     }
 }
-
-
 
 export const getUserProjects = async (req: Request, res: Response) => {
     try {
@@ -280,7 +243,7 @@ export const togglePublish = async (req: Request, res: Response) => {
             return res.status(401).json({ message: 'Unauthorized' })
         }
 
-        const { projectId } = req.params;
+        const projectId = req.params.projectId as string  // ✅ fixed
 
         const project = await prisma.websiteProject.findUnique({
             where: { id: projectId, userId }
