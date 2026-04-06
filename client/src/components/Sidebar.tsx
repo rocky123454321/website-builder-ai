@@ -7,7 +7,7 @@ import api from '@/configs/axios';
 interface SidebarProps {
     isMenuOpen: boolean;
     project: Project,
-    setProject:(project: Project)=> void;
+    setProject: (project: Project) => void;
     isGenerating: boolean;
     setIsGenerating: (isGenerating: boolean) => void;
 }
@@ -15,13 +15,13 @@ interface SidebarProps {
 function Sidebar({ isMenuOpen, project, setProject, isGenerating, setIsGenerating }: SidebarProps) {
 
     const messageRef = useRef<HTMLDivElement>(null)
+    const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)  // 👈 added
     const [input, setInput] = useState('')
     const [localError, setLocalError] = useState('')
 
     const handleRollback = async (versionId: string) => {
         try {
             setIsGenerating(true)
-            console.log('Rolling back to version:', versionId)
             const { data } = await api.get(`/api/project/rollback/${project.id}/${versionId}`)
             if (data) {
                 const { data: projectData } = await api.get(`/api/user/project/${project.id}`)
@@ -44,28 +44,41 @@ function Sidebar({ isMenuOpen, project, setProject, isGenerating, setIsGeneratin
         setIsGenerating(true)
         setLocalError('')
 
+        // 👇 Start 3-minute timeout
+        timeoutRef.current = setTimeout(() => {
+            setIsGenerating(false)
+            setInput(message)
+            setLocalError('Request timed out after 3 minutes. Please try again.')
+        }, 3 * 60 * 1000)
+
         try {
-            console.log('Sending revision request with message:', message, 'to project:', project.id)
             const { data } = await api.post(`/api/project/revision/${project.id}`, { message })
-            console.log('Revision response:', data)
             if (data.project) {
-                console.log('Updating project with response data, conversation length:', data.project.conversation?.length)
                 setProject(data.project)
             } else {
-                console.log('No project in response, refetching...')
                 const { data: projectData } = await api.get(`/api/user/project/${project.id}`)
-                console.log('Refetched project conversation length:', projectData.project.conversation?.length)
                 setProject(projectData.project)
             }
         } catch (error: unknown) {
-            console.error('Revision failed:', error)
-            const err = error as { response?: { data?: { message?: string } }; message?: string };
+            const err = error as { response?: { data?: { message?: string } }; message?: string }
             setLocalError(err.response?.data?.message || err.message || 'Failed to process revision')
             setInput(message)
         } finally {
+            // 👇 Clear timeout if request finished before 3 minutes
+            if (timeoutRef.current) {
+                clearTimeout(timeoutRef.current)
+                timeoutRef.current = null
+            }
             setIsGenerating(false)
         }
     }
+
+    // 👇 Cleanup on unmount
+    useEffect(() => {
+        return () => {
+            if (timeoutRef.current) clearTimeout(timeoutRef.current)
+        }
+    }, [])
 
     useEffect(() => {
         if (messageRef.current) {
@@ -192,4 +205,5 @@ function Sidebar({ isMenuOpen, project, setProject, isGenerating, setIsGeneratin
         </div>
     );
 }
+
 export default Sidebar
