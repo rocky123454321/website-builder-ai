@@ -30,11 +30,20 @@ const extractPrompt = (input: any): string => {
 
 const generateViaOpenRouter = async (prompt: string) => {
   const response = await openrouter.chat.completions.create({
-    model: 'arcee-ai/trinity-large-preview:free',
+    model: 'nvidia/nemotron-3-super-120b-a12b:free',
     messages: [{ role: 'user', content: prompt }],
   });
 
+  if (!response?.choices || response.choices.length === 0) {
+    throw new Error('OpenRouter returned empty response');
+  }
+
   const text = response.choices[0]?.message?.content || '';
+
+  if (!text) {
+    throw new Error('OpenRouter returned empty content');
+  }
+
   return {
     response: { text: () => text },
   };
@@ -49,7 +58,7 @@ type Provider = 'gemini' | 'openrouter';
 
 let currentProvider: Provider = 'openrouter';
 let lastSwitchTime: number = Date.now();
-const STAY_DURATION = 30 * 60 * 1000; // stay on current provider for 30 mins
+const STAY_DURATION = 50 * 60 * 1000; // stay on current provider for 30 mins
 
 export const gemini = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-lite' });
 
@@ -58,10 +67,9 @@ const originalGenerate = gemini.generateContent.bind(gemini);
 gemini.generateContent = async (...args: Parameters<typeof originalGenerate>) => {
   const prompt = extractPrompt(args[0]);
 
-  // After 15 mins, try switching back to openrouter
   const now = Date.now();
   if (now - lastSwitchTime >= STAY_DURATION) {
-    console.log('15 minutes passed, switching back to openrouter...');
+    console.log('30 minutes passed, switching back to openrouter...');
     currentProvider = 'openrouter';
     lastSwitchTime = now;
   }

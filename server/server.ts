@@ -40,7 +40,7 @@ app.get('/', (req: Request, res: Response) => {
 
 app.use('/api/user', userRouter);
 
-app.use('/api/user/project', projectRouter);
+app.use('/api/project', projectRouter);
 
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
     if (!res.headersSent) {
