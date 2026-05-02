@@ -7,10 +7,12 @@ if (!process.env.AI_API_KEY) {
 
 const genAI = new GoogleGenerativeAI(process.env.AI_API_KEY!);
 
-const openrouter = new OpenAI({
-  baseURL: 'https://openrouter.ai/api/v1',
-  apiKey: process.env.OPENROUTER_API_KEY!,
-});
+const openrouter = process.env.OPENROUTER_API_KEY
+  ? new OpenAI({
+      baseURL: 'https://openrouter.ai/api/v1',
+      apiKey: process.env.OPENROUTER_API_KEY,
+    })
+  : null;
 
 const FIFTEEN_MINUTES = 15 * 60 * 1000;
 
@@ -29,6 +31,8 @@ const extractPrompt = (input: any): string => {
 };
 
 const generateViaOpenRouter = async (prompt: string) => {
+  if (!openrouter) throw new Error('OpenRouter not configured — OPENROUTER_API_KEY is missing');
+  
   const response = await openrouter.chat.completions.create({
     model: 'arcee-ai/trinity-large-preview:free',
     messages: [{ role: 'user', content: prompt }],
@@ -58,7 +62,7 @@ type Provider = 'gemini' | 'openrouter';
 
 let currentProvider: Provider = 'openrouter';
 let lastSwitchTime: number = Date.now();
-const STAY_DURATION = 50 * 60 * 1000; // stay on current provider for 30 mins
+const STAY_DURATION = 50 * 60 * 1000;
 
 export const gemini = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-lite' });
 
@@ -74,9 +78,12 @@ gemini.generateContent = async (...args: Parameters<typeof originalGenerate>) =>
     lastSwitchTime = now;
   }
 
-  const providers: Provider[] = currentProvider === 'gemini'
-    ? ['gemini', 'openrouter']
-    : ['openrouter', 'gemini'];
+  // If OpenRouter is not configured, always use Gemini
+  const providers: Provider[] = !openrouter
+    ? ['gemini']
+    : currentProvider === 'gemini'
+      ? ['gemini', 'openrouter']
+      : ['openrouter', 'gemini'];
 
   for (const provider of providers) {
     try {
