@@ -1,7 +1,7 @@
 import gemini from '../configs/gemini.js';
 import { Request, Response } from 'express'
 import prisma from '../lib/prisma.js';
-//goods
+
 export const makeRevision = async (req: Request, res: Response) => {
     const userId = req.userId;
     try {
@@ -46,62 +46,41 @@ export const makeRevision = async (req: Request, res: Response) => {
             data: { credits: { decrement: 5 } }
         })
 
-        // Prompt Enhancement
-        const promptEnhanceResult = await gemini.generateContent(`
-You are a prompt enhancement specialist. The user wants to make changes to their website. Enhance their request to be more specific and actionable for a web developer.
-
-Enhance this by:
-1. Being specific about what elements to change
-2. Mentioning design details (colors, spacing, sizes)
-3. Clarifying the desired outcome
-4. Using clear technical terms
-
-Return ONLY the enhanced request, nothing else. Keep it concise (1-2 sentences).
-
-User request: "${message}"
-        `)
-
-        const enhancedPrompt = promptEnhanceResult.response.text()
-
         await prisma.conversation.create({
             data: {
                 role: 'assistant',
-                content: `I've enhanced your prompt : "${enhancedPrompt}"`,
-                projectId
-            }
-        })
-
-        await prisma.conversation.create({
-            data: {
-                role: 'assistant',
-                content: 'I am currently building a website.',
+                content: 'Applying your changes…',
                 projectId
             }
         })
 
         // Code Generation
-        const codeGenerationResult = await gemini.generateContent(`
-You are an expert web developer.
+     const codeGenerationResult = await gemini.generateContent(`
+You are a world-class UI/UX designer and senior frontend developer.
 
-CRITICAL REQUIREMENTS:
-- Return ONLY the complete updated HTML code with the requested changes.
-- Use Tailwind CSS for ALL styling (NO custom CSS).
-- Use Tailwind utility classes for all styling changes.
-- Include all JavaScript in <script> tags before closing </body>
-- Make sure it's a complete, standalone HTML document with Tailwind CSS
+TASK: Apply this change to the website while keeping or improving its visual quality.
 
-CRITICAL HARD RULES:
-1. Return HTML code ONLY - no markdown, no code fences, no explanations
-2. Do NOT include \`\`\`html or \`\`\` anywhere
-3. Start directly with <!DOCTYPE html>
+Requested change: "${message}"
 
-Apply the requested changes while maintaining the Tailwind CSS styling approach.
+REQUIREMENTS:
+- Maintain the existing design language, fonts, color palette
+- The change must look intentional and polished — not patched in
+- Keep all animations, hover effects, and responsive behavior intact
+- Cards: rounded-2xl shadow-xl hover:-translate-y-2 transition-all duration-300
+- Buttons: gradient, rounded-full, hover:scale-105
+- Use Tailwind CSS only — no inline styles
+- Keep: <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script> in <head>
+- Images: use https://placehold.co with real dimensions (e.g. https://placehold.co/600x400?text=Label)
 
-Here is the current website code:
+Current website code:
 ${currentProject.current_code}
 
-The user wants these changes: "${enhancedPrompt}"
-        `)
+HARD RULES:
+1. Return COMPLETE updated HTML ONLY — no markdown, no code fences
+2. Do NOT write \`\`\`html or \`\`\` anywhere
+3. Start directly with <!DOCTYPE html>
+4. NO inline style="" attributes — Tailwind classes ONLY
+`)
 
         const code = codeGenerationResult.response.text() || '';
         const cleanedCode = code.replace(/```html/g, '').replace(/```/g, '').trim();

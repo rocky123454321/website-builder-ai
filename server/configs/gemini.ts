@@ -30,7 +30,7 @@ const extractPrompt = (input: any): string => {
 
 const generateViaOpenRouter = async (prompt: string) => {
   const response = await openrouter.chat.completions.create({
-    model: 'nvidia/nemotron-3-super-120b-a12b:free',
+    model: 'arcee-ai/trinity-large-preview:free',
     messages: [{ role: 'user', content: prompt }],
   });
 

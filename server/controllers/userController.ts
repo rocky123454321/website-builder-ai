@@ -1,7 +1,7 @@
 import { Request, Response } from 'express'
 import prisma from '../lib/prisma.js';
 import gemini from '../configs/gemini.js';
-//gods
+
 export const getUserCredits = async (req: Request, res: Response) => {
     try {
         const userId = req.userId;
@@ -66,33 +66,6 @@ export const createUserProject = async (req: Request, res: Response) => {
         // Return projectId to client immediately
         res.json({ projectId: project.id })
 
-        // Prompt Enhancement
-        const promptEnhanceResult = await gemini.generateContent(`
-You are a prompt enhancement specialist. Take the user's website request and expand it into a detailed, comprehensive prompt that will help create the best possible website.
-
-Enhance this prompt by:
-1. Adding specific design details (layout, color scheme, typography)
-2. Specifying key sections and features
-3. Describing the user experience and interactions
-4. Including modern web design best practices
-5. Mentioning responsive design requirements
-6. Adding any missing but important elements
-
-Return ONLY the enhanced prompt, nothing else. Make it detailed but concise (2-3 paragraphs max).
-
-User request: "${initial_prompt}"
-        `)
-
-        const enhancedPrompt = promptEnhanceResult.response.text()
-
-        await prisma.conversation.create({
-            data: {
-                role: 'assistant',
-                content: `enhanced : "${enhancedPrompt}"`,
-                projectId: project.id
-            }
-        })
-
         await prisma.conversation.create({
             data: {
                 role: 'assistant',
@@ -102,31 +75,47 @@ User request: "${initial_prompt}"
         })
 
         // Code Generation
-        const codeGenerationResult = await gemini.generateContent(`
-You are an expert web developer. Create a complete, production-ready, single-page website based on this request: "${enhancedPrompt}"
+       const codeGenerationResult = await gemini.generateContent(`
+You are a world-class UI/UX designer (like top Dribbble designers) and senior frontend developer. Create a stunning, award-worthy single-page website based on this request: "${initial_prompt}"
 
-CRITICAL REQUIREMENTS:
-- You MUST output valid HTML ONLY.
-- Use Tailwind CSS for ALL styling
-- Include this EXACT script in the <head>: <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-- Use Tailwind utility classes extensively for styling, animations, and responsiveness
-- Make it fully functional and interactive with JavaScript in <script> tag before closing </body>
-- Use modern, beautiful design with great UX using Tailwind classes
-- Make it responsive using Tailwind responsive classes (sm:, md:, lg:, xl:)
-- Use Tailwind animations and transitions (animate-*, transition-*)
-- Include all necessary meta tags
-- Use Google Fonts CDN if needed for custom fonts
-- Use placeholder images from https://placehold.co/600x400
-- Use Tailwind gradient classes for beautiful backgrounds
-- Make sure all buttons, cards, and components use Tailwind styling
+DESIGN PHILOSOPHY:
+- Think like a premium agency — every pixel matters
+- Use bold, intentional design choices (not generic bootstrap-style layouts)
+- Pick a strong, cohesive color story (e.g. deep navy + electric blue + white, or cream + forest green + gold)
+- Use large, expressive typography with Google Fonts (mix a display font for headings + clean sans-serif for body)
+- Generous whitespace — let the design breathe
+- Asymmetric layouts, overlapping elements, diagonal sections — avoid boring box layouts
 
-CRITICAL HARD RULES:
-1. Return HTML code ONLY - no markdown, no code fences, no explanations
-2. Do NOT include \`\`\`html or \`\`\` anywhere
+SECTIONS TO INCLUDE (make each section visually distinct):
+1. Navigation — sticky, with blur backdrop (backdrop-blur-md bg-white/10)
+2. Hero — full-screen, bold headline, subheadline, 2 CTA buttons, background gradient or mesh gradient
+3. Features/Services — card grid with icons, hover effects, subtle shadows
+4. Stats/Numbers — large animated counters with labels
+5. Testimonials — clean quote cards with avatar initials and star ratings
+6. CTA Banner — full-width colored section with strong call to action
+7. Footer — multi-column with links, social icons, copyright
+
+VISUAL DETAILS:
+- Add CSS animations: fade-in on scroll (use IntersectionObserver), floating elements, gradient animations
+- Cards must have: rounded-2xl, shadow-xl, hover:-translate-y-2, transition-all duration-300
+- Buttons: gradient backgrounds, rounded-full, px-8 py-4, hover:shadow-lg hover:scale-105
+- Use emoji icons or Unicode symbols if no icon library — make them large and colorful
+- Section backgrounds must alternate: white → light gray → colored gradient → white
+- Hero background: use CSS mesh gradient or animated gradient (not plain color)
+
+TECHNICAL REQUIREMENTS:
+- Tailwind CSS via: <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+- Google Fonts: pick 2 fonts (display + body), load via CDN
+- All images: use https://placehold.co with real dimensions like https://placehold.co/800x500?text=Hero, https://placehold.co/400x400?text=Team
+- JavaScript: smooth scroll, mobile hamburger menu, scroll animations (IntersectionObserver), number counter animation
+- Mobile responsive using Tailwind sm: md: lg: breakpoints
+
+HARD RULES:
+1. Return HTML ONLY — no markdown, no code fences, no explanations
+2. Do NOT write \`\`\`html or \`\`\` anywhere
 3. Start directly with <!DOCTYPE html>
-
-The HTML should be complete and ready to render as-is with Tailwind CSS.
-        `)
+4. NO inline style="" attributes — Tailwind classes ONLY
+`)
 
         const code = codeGenerationResult.response.text() || '';
         const cleanedCode = code.replace(/```html/g, '').replace(/```/g, '').trim();
